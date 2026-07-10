@@ -1,0 +1,12 @@
+{
+  "name": "lauesim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static Laue diffraction simulator.",
+  "scripts": {
+    "check": "node --check app.js",
+    "deploy": "npx --yes vercel@latest deploy",
+    "deploy:prod": "npx --yes vercel@latest deploy --prod"
+  },
+  "devDependencies": {}
+}
