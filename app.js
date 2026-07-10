@@ -6,6 +6,9 @@ const inputs = {
   latticeA: document.getElementById("latticeA"),
   latticeB: document.getElementById("latticeB"),
   latticeC: document.getElementById("latticeC"),
+  latticeAlpha: document.getElementById("latticeAlpha"),
+  latticeBeta: document.getElementById("latticeBeta"),
+  latticeGamma: document.getElementById("latticeGamma"),
   dirU: document.getElementById("dirU"),
   dirV: document.getElementById("dirV"),
   dirW: document.getElementById("dirW"),
@@ -80,44 +83,31 @@ function add(a, b) {
   };
 }
 
+function combine(v1, s1, v2, s2, v3, s3) {
+  return add(add(multiply(v1, s1), multiply(v2, s2)), multiply(v3, s3));
+}
+
 function degreesToRadians(degrees) {
   return degrees * Math.PI / 180;
 }
 
-function rotateAroundA(v, angle) {
+function rotateAroundAxis(v, axis, angle) {
+  const unitAxis = normalize(axis);
+  if (!unitAxis) {
+    return null;
+  }
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
-  return {
-    x: v.x,
-    y: v.y * cos - v.z * sin,
-    z: v.y * sin + v.z * cos,
-  };
+  return add(
+    add(multiply(v, cos), multiply(cross(unitAxis, v), sin)),
+    multiply(unitAxis, dot(unitAxis, v) * (1 - cos)),
+  );
 }
 
-function rotateAroundB(v, angle) {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return {
-    x: v.x * cos + v.z * sin,
-    y: v.y,
-    z: -v.x * sin + v.z * cos,
-  };
-}
-
-function rotateAroundC(v, angle) {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return {
-    x: v.x * cos - v.y * sin,
-    y: v.x * sin + v.y * cos,
-    z: v.z,
-  };
-}
-
-function rotateVector(v, rotations) {
-  const aroundA = rotateAroundA(v, degreesToRadians(rotations.a));
-  const aroundB = rotateAroundB(aroundA, degreesToRadians(rotations.b));
-  return rotateAroundC(aroundB, degreesToRadians(rotations.c));
+function rotateVector(v, rotations, axes) {
+  const aroundA = rotateAroundAxis(v, axes.a, degreesToRadians(rotations.a));
+  const aroundB = aroundA ? rotateAroundAxis(aroundA, axes.b, degreesToRadians(rotations.b)) : null;
+  return aroundB ? rotateAroundAxis(aroundB, axes.c, degreesToRadians(rotations.c)) : null;
 }
 
 function getDetectorBasis(beam) {
@@ -131,11 +121,78 @@ function readNumber(input) {
   return Number.parseFloat(input.value);
 }
 
+function areCellAnglesValid(lattice) {
+  return Number.isFinite(lattice.alpha) &&
+    Number.isFinite(lattice.beta) &&
+    Number.isFinite(lattice.gamma) &&
+    lattice.alpha > 0 &&
+    lattice.alpha < 180 &&
+    lattice.beta > 0 &&
+    lattice.beta < 180 &&
+    lattice.gamma > 0 &&
+    lattice.gamma < 180;
+}
+
+function buildLatticeGeometry(lattice) {
+  if (!areCellAnglesValid(lattice)) {
+    return null;
+  }
+
+  const alpha = degreesToRadians(lattice.alpha);
+  const beta = degreesToRadians(lattice.beta);
+  const gamma = degreesToRadians(lattice.gamma);
+  const cosAlpha = Math.cos(alpha);
+  const cosBeta = Math.cos(beta);
+  const cosGamma = Math.cos(gamma);
+  const sinGamma = Math.sin(gamma);
+
+  if (Math.abs(sinGamma) < 1e-8) {
+    return null;
+  }
+
+  const directA = { x: lattice.a, y: 0, z: 0 };
+  const directB = { x: lattice.b * cosGamma, y: lattice.b * sinGamma, z: 0 };
+  const directCX = lattice.c * cosBeta;
+  const directCY = lattice.c * (cosAlpha - cosBeta * cosGamma) / sinGamma;
+  const directCZSquared = lattice.c ** 2 - directCX ** 2 - directCY ** 2;
+
+  if (directCZSquared < -1e-8) {
+    return null;
+  }
+
+  const directC = {
+    x: directCX,
+    y: directCY,
+    z: Math.sqrt(Math.max(0, directCZSquared)),
+  };
+  const volume = dot(directA, cross(directB, directC));
+
+  if (!Number.isFinite(volume) || Math.abs(volume) < 1e-8) {
+    return null;
+  }
+
+  return {
+    direct: {
+      a: directA,
+      b: directB,
+      c: directC,
+    },
+    reciprocal: {
+      a: multiply(cross(directB, directC), 1 / volume),
+      b: multiply(cross(directC, directA), 1 / volume),
+      c: multiply(cross(directA, directB), 1 / volume),
+    },
+  };
+}
+
 function getParameters() {
   const lattice = {
     a: readNumber(inputs.latticeA),
     b: readNumber(inputs.latticeB),
     c: readNumber(inputs.latticeC),
+    alpha: readNumber(inputs.latticeAlpha),
+    beta: readNumber(inputs.latticeBeta),
+    gamma: readNumber(inputs.latticeGamma),
   };
   const rotations = {
     a: readNumber(inputs.rotA),
@@ -144,21 +201,26 @@ function getParameters() {
   };
   const lambdaMin = readNumber(inputs.lambdaMin);
   const lambdaMax = readNumber(inputs.lambdaMax);
-  const baseIncident = {
-    x: readNumber(inputs.dirU) * lattice.a,
-    y: readNumber(inputs.dirV) * lattice.b,
-    z: readNumber(inputs.dirW) * lattice.c,
-  };
-  const normalizedBaseIncident = normalize(baseIncident);
+  const geometry = buildLatticeGeometry(lattice);
+  const baseIncident = geometry ? combine(
+    geometry.direct.a,
+    readNumber(inputs.dirU),
+    geometry.direct.b,
+    readNumber(inputs.dirV),
+    geometry.direct.c,
+    readNumber(inputs.dirW),
+  ) : null;
+  const normalizedBaseIncident = baseIncident ? normalize(baseIncident) : null;
   const baseDetectorBasis = normalizedBaseIncident ? getDetectorBasis(normalizedBaseIncident) : null;
   return {
     distance: readNumber(inputs.distance),
     lattice,
+    geometry,
     rotations,
-    incident: normalizedBaseIncident ? normalize(rotateVector(normalizedBaseIncident, rotations)) : null,
+    incident: normalizedBaseIncident ? normalize(rotateVector(normalizedBaseIncident, rotations, geometry.direct)) : null,
     detectorBasis: baseDetectorBasis ? {
-      e1: normalize(rotateVector(baseDetectorBasis.e1, rotations)),
-      e2: normalize(rotateVector(baseDetectorBasis.e2, rotations)),
+      e1: normalize(rotateVector(baseDetectorBasis.e1, rotations, geometry.direct)),
+      e2: normalize(rotateVector(baseDetectorBasis.e2, rotations, geometry.direct)),
     } : null,
     lambdaMin: Math.min(lambdaMin, lambdaMax),
     lambdaMax: Math.max(lambdaMin, lambdaMax),
@@ -172,9 +234,15 @@ function validateParameters(params) {
     Number.isFinite(params.lattice.a) &&
     Number.isFinite(params.lattice.b) &&
     Number.isFinite(params.lattice.c) &&
+    Number.isFinite(params.lattice.alpha) &&
+    Number.isFinite(params.lattice.beta) &&
+    Number.isFinite(params.lattice.gamma) &&
     params.lattice.a > 0 &&
     params.lattice.b > 0 &&
     params.lattice.c > 0 &&
+    areCellAnglesValid(params.lattice) &&
+    params.geometry &&
+    params.geometry.reciprocal &&
     Number.isFinite(params.rotations.a) &&
     Number.isFinite(params.rotations.b) &&
     Number.isFinite(params.rotations.c) &&
@@ -199,8 +267,9 @@ function simulate() {
     return;
   }
 
-  const { distance, lattice, incident, detectorBasis, lambdaMin, lambdaMax, hklLimit } = params;
+  const { distance, geometry, incident, detectorBasis, lambdaMin, lambdaMax, hklLimit } = params;
   const { e1, e2 } = detectorBasis;
+  const reciprocalBasis = geometry.reciprocal;
   const nextSpots = [];
 
   for (let h = -hklLimit; h <= hklLimit; h += 1) {
@@ -210,11 +279,7 @@ function simulate() {
           continue;
         }
 
-        const reciprocal = {
-          x: h / lattice.a,
-          y: k / lattice.b,
-          z: l / lattice.c,
-        };
+        const reciprocal = combine(reciprocalBasis.a, h, reciprocalBasis.b, k, reciprocalBasis.c, l);
         const q2 = dot(reciprocal, reciprocal);
         const projection = dot(incident, reciprocal);
         const lambda = -2 * projection / q2;
