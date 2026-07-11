@@ -32,8 +32,7 @@ const cursorPosition = document.getElementById("cursorPosition");
 const mobileControlsQuery = window.matchMedia("(max-width: 860px)");
 
 let spots = [];
-const defaultScale = 3.2;
-let zoomBaseScale = defaultScale;
+const defaultScale = 100;
 let view = {
   scale: defaultScale,
   offsetX: 0,
@@ -369,7 +368,6 @@ function screenToWorld(x, y) {
 }
 
 function resetView() {
-  zoomBaseScale = defaultScale;
   view.scale = defaultScale;
   view.offsetX = 0;
   view.offsetY = 0;
@@ -416,10 +414,9 @@ function autoScaleView() {
   const centerY = (minY + maxY) / 2;
 
   view.scale = clampScale(Math.min(usableWidth / dataWidth, usableHeight / dataHeight));
-  zoomBaseScale = view.scale;
   view.offsetX = -centerX * view.scale;
   view.offsetY = centerY * view.scale;
-  zoomLevel.textContent = "100%";
+  zoomLevel.textContent = `${Math.round(view.scale / defaultScale * 100)}%`;
 }
 
 function getPinchState() {
@@ -505,7 +502,7 @@ function drawGrid(rect) {
 function drawSpots() {
   for (const spot of spots) {
     const screen = worldToScreen(spot.x, spot.y);
-    const radius = Math.max(1.8, spot.radius * Math.sqrt(view.scale / zoomBaseScale));
+    const radius = Math.max(1.8, spot.radius * Math.sqrt(view.scale / defaultScale));
     const alpha = Math.min(0.95, spot.strength);
 
     ctx.beginPath();
@@ -540,7 +537,7 @@ function draw() {
   drawGrid(rect);
   drawSpots();
   drawLabels();
-  zoomLevel.textContent = `${Math.round(view.scale / zoomBaseScale * 100)}%`;
+  zoomLevel.textContent = `${Math.round(view.scale / defaultScale * 100)}%`;
 }
 
 form.addEventListener("submit", (event) => {
