@@ -19,6 +19,8 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
   background:
     linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34%),
     linear-gradient(315deg, rgba(214, 139, 23, 0.08), transparent 32%),
@@ -36,8 +38,14 @@ input {
   display: grid;
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   gap: 18px;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   padding: 18px;
+}
+
+body.controls-collapsed .app-shell {
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
 }
 
 .controls,
@@ -51,6 +59,7 @@ input {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-height: 0;
   padding: 18px;
   overflow-y: auto;
 }
@@ -60,12 +69,19 @@ input {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex: 0 0 auto;
 }
 
 .brand h1 {
   margin: 0;
   font-size: 2rem;
   line-height: 1;
+}
+
+.brand-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .brand p,
@@ -92,6 +108,31 @@ input {
 
 .icon-button:hover {
   border-color: var(--accent);
+}
+
+.toggle-button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--accent-dark);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.toggle-button:hover {
+  border-color: var(--accent);
+}
+
+.controls-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.controls-panel[hidden] {
+  display: none;
 }
 
 .control-form,
@@ -207,6 +248,7 @@ input:focus {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -244,7 +286,7 @@ input:focus {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 420px;
+  min-height: 0;
   background: var(--canvas);
   cursor: grab;
   touch-action: none;
@@ -257,20 +299,62 @@ input:focus {
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(520px, 1fr);
-    min-height: auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    padding: 10px;
+  }
+
+  body.controls-collapsed .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .controls,
+  .plot-area {
+    box-shadow: 0 10px 28px rgba(22, 33, 31, 0.1);
   }
 
   .controls {
+    gap: 12px;
+    max-height: 48dvh;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  body.controls-collapsed .controls {
+    max-height: none;
     overflow: visible;
+  }
+
+  .brand {
+    align-items: center;
+  }
+
+  .brand h1 {
+    font-size: 1.35rem;
+  }
+
+  .controls-panel {
+    gap: 12px;
+  }
+
+  .control-section {
+    padding-top: 12px;
+  }
+
+  .plot-toolbar {
+    min-height: 52px;
+    padding: 10px 12px;
+  }
+
+  #plotCanvas {
+    min-height: 0;
   }
 }
 
 @media (max-width: 520px) {
-  .app-shell {
-    padding: 10px;
-  }
-
   label,
   .range-grid,
   .vector-grid {
@@ -284,6 +368,41 @@ input:focus {
 
   .plot-toolbar {
     align-items: flex-start;
+    flex-direction: row;
+  }
+
+  .plot-toolbar span {
+    display: none;
+  }
+
+  .plot-toolbar strong {
+    margin-bottom: 0;
+  }
+
+  .legend {
+    display: none;
+  }
+
+  .toggle-button {
+    max-width: 42vw;
+    padding: 0 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand {
+    align-items: stretch;
     flex-direction: column;
+  }
+
+  .brand-actions {
+    justify-content: space-between;
+  }
+
+  .toggle-button {
+    max-width: none;
+    flex: 1;
   }
 }

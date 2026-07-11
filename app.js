@@ -22,6 +22,8 @@ const inputs = {
 
 const form = document.getElementById("simForm");
 const resetViewButton = document.getElementById("resetView");
+const toggleControlsButton = document.getElementById("toggleControls");
+const parameterPanel = document.getElementById("parameterPanel");
 const spotCount = document.getElementById("spotCount");
 const zoomLevel = document.getElementById("zoomLevel");
 const cursorPosition = document.getElementById("cursorPosition");
@@ -466,6 +468,15 @@ for (const input of Object.values(inputs)) {
 resetViewButton.addEventListener("click", () => {
   resetView();
   draw();
+});
+
+toggleControlsButton.addEventListener("click", () => {
+  const collapsed = !parameterPanel.hidden;
+  parameterPanel.hidden = collapsed;
+  document.body.classList.toggle("controls-collapsed", collapsed);
+  toggleControlsButton.setAttribute("aria-expanded", String(!collapsed));
+  toggleControlsButton.textContent = collapsed ? "パラメーターを表示" : "パラメーターを隠す";
+  requestAnimationFrame(resizeCanvas);
 });
 
 canvas.addEventListener("pointerdown", (event) => {
