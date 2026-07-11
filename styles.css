@@ -36,7 +36,7 @@ input {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(380px, 440px) minmax(0, 1fr);
   gap: 18px;
   height: 100vh;
   height: 100dvh;
@@ -171,7 +171,7 @@ body.controls-collapsed .app-shell {
 
 label {
   display: grid;
-  grid-template-columns: 1fr minmax(96px, 122px) 34px;
+  grid-template-columns: 1fr minmax(120px, 150px) 34px;
   align-items: center;
   gap: 10px;
   color: var(--ink);
@@ -218,7 +218,7 @@ input:focus {
 }
 
 .range-grid label {
-  grid-template-columns: 1fr minmax(0, 84px) 24px;
+  grid-template-columns: 1fr minmax(0, 108px) 24px;
 }
 
 .primary-button {
