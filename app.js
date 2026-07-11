@@ -553,7 +553,7 @@ for (const input of Object.values(inputs)) {
 }
 
 autoScaleButton.addEventListener("click", () => {
-  autoScaleView();
+  resetView();
   draw();
 });
 
