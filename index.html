@@ -14,11 +14,11 @@
             <h1>LaueSim</h1>
           </div>
           <div class="brand-actions">
+            <button id="autoScale" class="auto-scale-button" type="button">
+              オートスケール
+            </button>
             <button id="toggleControls" class="toggle-button" type="button" aria-expanded="true" aria-controls="parameterPanel">
               パラメーターを隠す
-            </button>
-            <button id="resetView" class="icon-button" type="button" title="表示をリセット" aria-label="表示をリセット">
-              <span aria-hidden="true">⌖</span>
             </button>
           </div>
         </div>
@@ -141,11 +141,19 @@
         <div class="plot-toolbar">
           <div>
             <strong>後方反射スクリーン像</strong>
-            <span>ドラッグで移動、スクロールで拡大縮小</span>
+            <span>ドラッグで移動、スクロール/ピンチで拡大縮小</span>
           </div>
-          <div class="legend">
-            <span class="legend-swatch"></span>
-            <span>反射スポット</span>
+          <div class="plot-actions">
+            <button id="zoomOut" class="icon-button" type="button" title="縮小" aria-label="縮小">
+              <span aria-hidden="true">−</span>
+            </button>
+            <button id="zoomIn" class="icon-button" type="button" title="拡大" aria-label="拡大">
+              <span aria-hidden="true">+</span>
+            </button>
+            <div class="legend">
+              <span class="legend-swatch"></span>
+              <span>反射スポット</span>
+            </div>
           </div>
         </div>
         <canvas id="plotCanvas" aria-label="Laue diffraction simulation plot"></canvas>

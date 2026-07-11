@@ -21,12 +21,15 @@ const inputs = {
 };
 
 const form = document.getElementById("simForm");
-const resetViewButton = document.getElementById("resetView");
+const autoScaleButton = document.getElementById("autoScale");
 const toggleControlsButton = document.getElementById("toggleControls");
 const parameterPanel = document.getElementById("parameterPanel");
+const zoomOutButton = document.getElementById("zoomOut");
+const zoomInButton = document.getElementById("zoomIn");
 const spotCount = document.getElementById("spotCount");
 const zoomLevel = document.getElementById("zoomLevel");
 const cursorPosition = document.getElementById("cursorPosition");
+const mobileControlsQuery = window.matchMedia("(max-width: 860px)");
 
 let spots = [];
 const defaultScale = 3.2;
@@ -39,6 +42,13 @@ let pointer = {
   dragging: false,
   lastX: 0,
   lastY: 0,
+};
+const activePointers = new Map();
+let pinch = {
+  active: false,
+  distance: 0,
+  centerX: 0,
+  centerY: 0,
 };
 
 function vectorLength(v) {
@@ -319,7 +329,7 @@ function simulate() {
   nextSpots.sort((a, b) => b.radius - a.radius);
   spots = nextSpots;
   spotCount.textContent = String(spots.length);
-  resetView();
+  autoScaleView();
   draw();
 }
 
@@ -362,6 +372,80 @@ function resetView() {
   view.offsetX = 0;
   view.offsetY = 0;
   zoomLevel.textContent = "100%";
+}
+
+function clampScale(scale) {
+  return Math.max(0.05, Math.min(80, scale));
+}
+
+function zoomAtClientPoint(clientX, clientY, factor) {
+  const before = screenToWorld(clientX, clientY);
+  view.scale = clampScale(view.scale * factor);
+  const after = screenToWorld(clientX, clientY);
+  view.offsetX += (after.x - before.x) * view.scale;
+  view.offsetY -= (after.y - before.y) * view.scale;
+}
+
+function autoScaleView() {
+  const rect = canvas.getBoundingClientRect();
+  if (!spots.length || rect.width <= 0 || rect.height <= 0) {
+    resetView();
+    return;
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const spot of spots) {
+    minX = Math.min(minX, spot.x);
+    maxX = Math.max(maxX, spot.x);
+    minY = Math.min(minY, spot.y);
+    maxY = Math.max(maxY, spot.y);
+  }
+
+  const padding = Math.min(56, Math.max(24, Math.min(rect.width, rect.height) * 0.12));
+  const usableWidth = Math.max(1, rect.width - padding * 2);
+  const usableHeight = Math.max(1, rect.height - padding * 2);
+  const dataWidth = Math.max(1, maxX - minX);
+  const dataHeight = Math.max(1, maxY - minY);
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  view.scale = clampScale(Math.min(usableWidth / dataWidth, usableHeight / dataHeight));
+  view.offsetX = -centerX * view.scale;
+  view.offsetY = centerY * view.scale;
+  zoomLevel.textContent = `${Math.round(view.scale / defaultScale * 100)}%`;
+}
+
+function getPinchState() {
+  const points = [...activePointers.values()];
+  if (points.length < 2) {
+    return null;
+  }
+  const first = points[0];
+  const second = points[1];
+  return {
+    centerX: (first.clientX + second.clientX) / 2,
+    centerY: (first.clientY + second.clientY) / 2,
+    distance: Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY),
+  };
+}
+
+function stopPointerInteraction() {
+  pointer.dragging = false;
+  pinch.active = false;
+  canvas.classList.remove("is-panning");
+}
+
+function setControlsCollapsed(collapsed) {
+  const shouldCollapse = collapsed && mobileControlsQuery.matches;
+  parameterPanel.hidden = shouldCollapse;
+  document.body.classList.toggle("controls-collapsed", shouldCollapse);
+  toggleControlsButton.setAttribute("aria-expanded", String(!shouldCollapse));
+  toggleControlsButton.textContent = shouldCollapse ? "パラメーターを表示" : "パラメーターを隠す";
+  requestAnimationFrame(resizeCanvas);
 }
 
 function drawGrid(rect) {
@@ -465,31 +549,65 @@ for (const input of Object.values(inputs)) {
   input.addEventListener("change", simulate);
 }
 
-resetViewButton.addEventListener("click", () => {
-  resetView();
+autoScaleButton.addEventListener("click", () => {
+  autoScaleView();
   draw();
 });
 
 toggleControlsButton.addEventListener("click", () => {
-  const collapsed = !parameterPanel.hidden;
-  parameterPanel.hidden = collapsed;
-  document.body.classList.toggle("controls-collapsed", collapsed);
-  toggleControlsButton.setAttribute("aria-expanded", String(!collapsed));
-  toggleControlsButton.textContent = collapsed ? "パラメーターを表示" : "パラメーターを隠す";
-  requestAnimationFrame(resizeCanvas);
+  setControlsCollapsed(!parameterPanel.hidden);
 });
 
 canvas.addEventListener("pointerdown", (event) => {
-  pointer.dragging = true;
+  activePointers.set(event.pointerId, {
+    clientX: event.clientX,
+    clientY: event.clientY,
+  });
   pointer.lastX = event.clientX;
   pointer.lastY = event.clientY;
+  pointer.dragging = activePointers.size === 1;
   canvas.classList.add("is-panning");
   canvas.setPointerCapture(event.pointerId);
+
+  const pinchState = getPinchState();
+  if (pinchState) {
+    pinch = {
+      active: true,
+      distance: pinchState.distance,
+      centerX: pinchState.centerX,
+      centerY: pinchState.centerY,
+    };
+    pointer.dragging = false;
+  }
 });
 
 canvas.addEventListener("pointermove", (event) => {
+  if (activePointers.has(event.pointerId)) {
+    activePointers.set(event.pointerId, {
+      clientX: event.clientX,
+      clientY: event.clientY,
+    });
+  }
+
   const world = screenToWorld(event.clientX, event.clientY);
   cursorPosition.textContent = `${world.x.toFixed(1)}, ${world.y.toFixed(1)} mm`;
+
+  const pinchState = getPinchState();
+  if (pinchState) {
+    if (pinch.active && pinch.distance > 0 && pinchState.distance > 0) {
+      zoomAtClientPoint(pinchState.centerX, pinchState.centerY, pinchState.distance / pinch.distance);
+      view.offsetX += pinchState.centerX - pinch.centerX;
+      view.offsetY += pinchState.centerY - pinch.centerY;
+      draw();
+    }
+    pinch = {
+      active: true,
+      distance: pinchState.distance,
+      centerX: pinchState.centerX,
+      centerY: pinchState.centerY,
+    };
+    return;
+  }
 
   if (!pointer.dragging) {
     return;
@@ -503,14 +621,24 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 canvas.addEventListener("pointerup", (event) => {
-  pointer.dragging = false;
-  canvas.classList.remove("is-panning");
+  activePointers.delete(event.pointerId);
+  if (activePointers.size === 0) {
+    stopPointerInteraction();
+  } else if (activePointers.size === 1) {
+    const remaining = [...activePointers.values()][0];
+    pointer.dragging = true;
+    pointer.lastX = remaining.clientX;
+    pointer.lastY = remaining.clientY;
+    pinch.active = false;
+  }
   canvas.releasePointerCapture(event.pointerId);
 });
 
-canvas.addEventListener("pointercancel", () => {
-  pointer.dragging = false;
-  canvas.classList.remove("is-panning");
+canvas.addEventListener("pointercancel", (event) => {
+  activePointers.delete(event.pointerId);
+  if (activePointers.size === 0) {
+    stopPointerInteraction();
+  }
 });
 
 canvas.addEventListener("pointerleave", () => {
@@ -521,16 +649,31 @@ canvas.addEventListener("pointerleave", () => {
 
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
-  const before = screenToWorld(event.clientX, event.clientY);
   const factor = event.deltaY < 0 ? 1.12 : 0.89;
-  view.scale = Math.max(0.05, Math.min(80, view.scale * factor));
-  const after = screenToWorld(event.clientX, event.clientY);
-  view.offsetX += (after.x - before.x) * view.scale;
-  view.offsetY -= (after.y - before.y) * view.scale;
+  zoomAtClientPoint(event.clientX, event.clientY, factor);
   draw();
 }, { passive: false });
 
+zoomOutButton.addEventListener("click", () => {
+  const center = canvasCenter();
+  const rect = canvas.getBoundingClientRect();
+  zoomAtClientPoint(rect.left + center.x, rect.top + center.y, 0.82);
+  draw();
+});
+
+zoomInButton.addEventListener("click", () => {
+  const center = canvasCenter();
+  const rect = canvas.getBoundingClientRect();
+  zoomAtClientPoint(rect.left + center.x, rect.top + center.y, 1.22);
+  draw();
+});
+
 window.addEventListener("resize", resizeCanvas);
+mobileControlsQuery.addEventListener("change", () => {
+  if (!mobileControlsQuery.matches) {
+    setControlsCollapsed(false);
+  }
+});
 
 resizeCanvas();
 simulate();

@@ -61,7 +61,7 @@ body.controls-collapsed .app-shell {
   gap: 18px;
   min-height: 0;
   padding: 18px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .brand {
@@ -110,6 +110,7 @@ body.controls-collapsed .app-shell {
   border-color: var(--accent);
 }
 
+.auto-scale-button,
 .toggle-button {
   min-height: 40px;
   border: 1px solid var(--line);
@@ -122,6 +123,19 @@ body.controls-collapsed .app-shell {
   white-space: nowrap;
 }
 
+.auto-scale-button {
+  background: var(--accent);
+  color: #fff;
+}
+
+.auto-scale-button:hover {
+  background: var(--accent-dark);
+}
+
+.toggle-button {
+  display: none;
+}
+
 .toggle-button:hover {
   border-color: var(--accent);
 }
@@ -129,6 +143,9 @@ body.controls-collapsed .app-shell {
 .controls-panel {
   display: grid;
   gap: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .controls-panel[hidden] {
@@ -274,6 +291,12 @@ input:focus {
   white-space: nowrap;
 }
 
+.plot-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .legend-swatch {
   width: 12px;
   height: 12px;
@@ -318,9 +341,9 @@ input:focus {
 
   .controls {
     gap: 12px;
-    max-height: 48dvh;
+    max-height: 58dvh;
     padding: 12px;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   body.controls-collapsed .controls {
@@ -338,6 +361,7 @@ input:focus {
 
   .controls-panel {
     gap: 12px;
+    overflow-y: auto;
   }
 
   .control-section {
@@ -349,12 +373,29 @@ input:focus {
     padding: 10px 12px;
   }
 
+  .toggle-button {
+    display: inline-block;
+  }
+
   #plotCanvas {
     min-height: 0;
   }
 }
 
 @media (max-width: 520px) {
+  .brand {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .brand-actions {
+    justify-content: space-between;
+  }
+
+  .brand-actions button {
+    flex: 1;
+  }
+
   label,
   .range-grid,
   .vector-grid {
@@ -383,26 +424,14 @@ input:focus {
     display: none;
   }
 
-  .toggle-button {
-    max-width: 42vw;
-    padding: 0 10px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
-@media (max-width: 380px) {
-  .brand {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .brand-actions {
-    justify-content: space-between;
+  .plot-actions {
+    flex: 0 0 auto;
   }
 
   .toggle-button {
     max-width: none;
-    flex: 1;
+    padding: 0 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
