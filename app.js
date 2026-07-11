@@ -32,7 +32,7 @@ const cursorPosition = document.getElementById("cursorPosition");
 const mobileControlsQuery = window.matchMedia("(max-width: 860px)");
 
 let spots = [];
-const defaultScale = 100;
+const defaultScale = 3.2;
 let view = {
   scale: defaultScale,
   offsetX: 0,
